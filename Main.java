@@ -15,7 +15,6 @@ public class Main {
         Goal goal = parser.Goal();
         SymbolVisitor symbol_visitor = new SymbolVisitor();
         goal.accept(symbol_visitor);
-        symbol_visitor.printOffset();
       } catch (ParseException e) {
         System.err.println(e.getMessage());
       } catch (FileNotFoundException e) {

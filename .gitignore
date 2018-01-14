@@ -1,0 +1,37 @@
+# JTB
+syntaxtree/
+visitor/
+MiniJava-jtb.jj
+
+# JavaCC
+JavaCharStream.java
+MiniJavaParserConstants.java
+MiniJavaParser.java
+MiniJavaParserTokenManager.java
+ParseException.java
+Token.java
+TokenMgrError.java
+
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Virtual machine crash logs, see
+# https://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*

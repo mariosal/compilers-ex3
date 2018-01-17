@@ -33,18 +33,16 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
         continue;
       }
 
-      int count_funcs = cls.ofuncs.size();
-      if (cls.isMain) {
-        --count_funcs;
-      }
+      int count_funcs = cls.countFuncs(prog);
       out.printf("@.%s_vtable = global [%d x i8*] [", cls.name, count_funcs);
 
-      for (Func func : cls.ofuncs) {
+      List<Func> all_ofuncs = cls.getFuncs(prog);
+      for (Func func : all_ofuncs) {
         if (func.isStatic) {
           continue;
         }
 
-        out.printf("i8* bitcast (%s @%s.%s to i8*)", func.size(), cls.name, func.name);
+        out.printf("i8* bitcast (%s @%s.%s to i8*)", func.size(), cls.funcOwner(func.name, prog).name, func.name);
         if (count_funcs > 1) {
           out.print(", ");
         }
@@ -590,10 +588,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     out.printf("%s%%_%d = bitcast i8* %%_%d to i8***\n", tabs(), count, count - 1);
     ++count;
 
-    int count_funcs = new_cls.funcs.size();
-    if (new_cls.isMain) {
-      --count_funcs;
-    }
+    int count_funcs = new_cls.countFuncs(prog);
     out.printf("%s%%_%d = getelementptr [%d x i8*], [%d x i8*]* @.%s_vtable, i32 0, i32 0\n", tabs(), count, count_funcs, count_funcs, new_cls.name);
     out.printf("%sstore i8** %%_%d, i8*** %%_%d\n", tabs(), count, count - 1);
     ++count;

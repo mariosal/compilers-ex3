@@ -113,7 +113,7 @@ public class Cls {
     return 0;
   }
 
-  public boolean has(String func, Prog prog) throws Exception {
+  public boolean has(String func, Prog prog) {
     if (funcs.containsKey(func)) {
       return true;
     }
@@ -121,6 +121,47 @@ public class Cls {
       return prog.classes.get(parent).has(func, prog);
     }
     return false;
+  }
+
+  public int countFuncs(Prog prog) {
+    int ret = 0;
+    if (!parent.isEmpty()) {
+      ret += prog.classes.get(parent).countFuncs(prog);
+    }
+    for (Func func : ofuncs) {
+      if (!func.isStatic && (parent.isEmpty() || !prog.classes.get(parent).has(func.name, prog))) {
+        ++ret;
+      }
+    }
+    return ret;
+  }
+
+  public List<Func> getFuncs(Prog prog) {
+    if (parent.isEmpty()) {
+      return new ArrayList<Func>(ofuncs);
+    }
+
+    List<Func> ret = new ArrayList<Func>();
+
+    List<Func> pall_ofuncs = prog.classes.get(parent).getFuncs(prog);
+    for (Func func : pall_ofuncs) {
+      if (funcs.containsKey(func.name)) {
+        ret.add(funcs.get(func.name));
+      } else {
+        ret.add(func);
+      }
+    }
+    return ret;
+  }
+
+  public Cls funcOwner(String func, Prog prog) {
+    if (funcs.containsKey(func)) {
+      return this;
+    }
+    if (!parent.isEmpty()) {
+      return prog.classes.get(parent).funcOwner(func, prog);
+    }
+    return null;
   }
 
   public void countOffset(Prog prog, HashSet<String> visited) throws Exception {

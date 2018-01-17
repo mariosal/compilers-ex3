@@ -103,7 +103,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     R _ret=null;
     n.f14.accept(this, argu);
     n.f15.accept(this, argu);
-    out.print("\n\tret i32 0\n}\n");
+    out.print("\tret i32 0\n}\n");
     return _ret;
   }
 
@@ -177,7 +177,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     }
 
     for (Var var : cur_func.ovars) {
-      out.printf("\t%%%s = alloca %s\n\n", var.name, var.type.size());
+      out.printf("\t%%%s = alloca %s\n%s\n", var.name, var.type.size(), tabs());
     }
 
     n.f8.accept(this, argu);
@@ -186,6 +186,17 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     out.printf("\tret %s %s\n", cur_func.type.size(), ret_val);
 
     out.print("}\n");
+    return _ret;
+  }
+
+  /**
+   * f0 -> "{"
+   * f1 -> ( Statement() )*
+   * f2 -> "}"
+   */
+  public R visit(Block n, A argu) throws Exception {
+    R _ret = n.f1.accept(this, argu);
+    out.printf("%s\n", tabs());
     return _ret;
   }
 
@@ -210,7 +221,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
       var = cur_cls.getVar(id, prog);
     }
 
-    out.printf("%sstore %s %s, %s* %s\n\n", tabs(), var.type.size(), rhs, var.type.size(), lhs);
+    out.printf("%sstore %s %s, %s* %s\n%s\n", tabs(), var.type.size(), rhs, var.type.size(), lhs, tabs());
     return _ret;
   }
 
@@ -255,14 +266,14 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
 
     out.printf("if%d:\n", tmp);
     n.f4.accept(this, argu);
-    out.printf("\n%sbr label %%if%d\n\n", tabs(), tmp + 2);
+    out.printf("%sbr label %%if%d\n\n", tabs(), tmp + 2);
 
     out.printf("if%d:\n\n", tmp + 1);
     n.f6.accept(this, argu);
     out.printf("%sbr label %%if%d\n\n", tabs(), tmp + 2);
 
-    out.printf("if%d:\n\n", tmp + 2);
     --indent;
+    out.printf("if%d:\n%s\n", tmp + 2, tabs());
 
     return _ret;
   }
@@ -288,10 +299,10 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
 
     out.printf("loop%d:\n", tmp + 1);
     n.f4.accept(this, argu);
-    out.printf("\n%sbr label %%loop%d\n\n", tabs(), tmp);
+    out.printf("%sbr label %%loop%d\n\n", tabs(), tmp);
 
-    out.printf("loop%d:\n\n", tmp + 2);
     --indent;
+    out.printf("loop%d:\n%s\n", tmp + 2, tabs());
 
     return _ret;
   }
@@ -306,7 +317,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
   @Override public R visit(PrintStatement n, A argu) throws Exception {
     R _ret=null;
     String expr = (String)n.f2.accept(this, argu);
-    out.printf("%scall void (i32) @print_int(i32 %s)\n", tabs(), expr);
+    out.printf("%scall void (i32) @print_int(i32 %s)\n%s\n", tabs(), expr, tabs());
     return _ret;
   }
 
@@ -318,7 +329,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
   @Override public R visit(AndExpression n, A argu) throws Exception {
     String lhs = (String)n.f0.accept(this, argu);
     int tmp = count;
-    count += 4;
+    count += 5;
 
     out.printf("%sbr label %%andclause%d\n\n", tabs(), tmp + 1);
 
@@ -333,7 +344,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     out.printf("%sbr label %%andclause%d\n\n", tabs(), tmp + 4);
 
     out.printf("andclause%d:\n", tmp + 4);
-    out.printf("%s%%_%d = phi i1 [ 0, %%andclause%d ], [ %s, %%andclause%d ]\n", tabs(), tmp, tmp + 1, rhs, tmp + 2);
+    out.printf("%s%%_%d = phi i1 [ 0, %%andclause%d ], [ %s, %%andclause%d ]\n", tabs(), tmp, tmp + 1, rhs, tmp + 3);
     return (R)("%_" + tmp);
   }
 
@@ -462,7 +473,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     if (expr_list == null) {
       expr_list = "";
     }
-    out.printf("%s%%_%d = call %s %%_%d(i8* %%this%s)\n", tabs(), tmp, func.type.size(), tmp - 1, expr_list);
+    out.printf("%s%%_%d = call %s %%_%d(i8* %s%s)\n", tabs(), tmp, func.type.size(), tmp - 1, expr, expr_list);
     cur_type = func.type;
     return (R)("%_" + tmp);
   }
@@ -550,7 +561,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
       ++count;
 
       if (!argu.equals("lhs")) {
-        out.printf("%s%%_%d = load %s, %s* %%%s\n", tabs(), count, var.type.size(), var.type.size(), count - 1);
+        out.printf("%s%%_%d = load %s, %s* %%_%d\n", tabs(), count, var.type.size(), var.type.size(), count - 1);
         ++count;
       }
       _ret = (R)("%_" + (count - 1));
@@ -579,11 +590,11 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     String size = (String)n.f3.accept(this, argu);
 
     out.printf("%s%%_%d = icmp slt i32 %s, 0\n", tabs(), tmp + 3, size);
-    out.printf("%sbr i1 %%_%d, label %%arr_alloc%d, label %%arr_alloc%d\n\n", tabs(), tmp + 3, tmp + 4, tmp + 5);
+    out.printf("%sbr i1 %%_%d, label %%arr_alloc%d, label %%arr_alloc%d\n%s\n", tabs(), tmp + 3, tmp + 4, tmp + 5, tabs());
 
     out.printf("arr_alloc%d:\n", tmp + 4);
     out.printf("%scall void @throw_oob()\n", tabs());
-    out.printf("%sbr label %%arr_alloc%d\n\n", tabs(), tmp + 5);
+    out.printf("%sbr label %%arr_alloc%d\n%s\n", tabs(), tmp + 5, tabs());
 
     out.printf("arr_alloc%d:\n", tmp + 5);
     out.printf("%s%%_%d = add i32 %s, 1\n", tabs(), tmp, size);

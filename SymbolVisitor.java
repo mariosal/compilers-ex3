@@ -2,7 +2,7 @@ import syntaxtree.*;
 import visitor.DepthFirstVisitor;
 
 public class SymbolVisitor extends DepthFirstVisitor {
-  private Prog prog;
+  public Prog prog;
 
   private Cls cur_cls;
   private Func cur_func;
@@ -141,7 +141,7 @@ public class SymbolVisitor extends DepthFirstVisitor {
 
     Var var = new Var(n.f1.f0.toString(), type);
     if (cur_func != null) {
-      cur_func.addParam(var);
+      cur_func.addVar(var);
     } else if (cur_cls != null) {
       cur_cls.addVar(var, prog);
     }

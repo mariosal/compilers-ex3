@@ -9,6 +9,7 @@ public class Func {
   public HashMap<String, Var> vars;
 
   public List<Var> oparams;
+  public List<Var> ovars;
 
   public Func(String name, VarType type) throws Exception {
     this(name, type, false);
@@ -26,6 +27,7 @@ public class Func {
     params = new HashMap<String, Var>();
     vars = new HashMap<String, Var>();
     oparams = new ArrayList<Var>();
+    ovars = new ArrayList<Var>();
   }
 
   public void addParam(Var param) throws Exception {
@@ -41,10 +43,27 @@ public class Func {
       throw new Exception("Variable " + var.name + " is already defined in method " + name);
     }
     vars.put(var.name, var);
+    ovars.add(var);
   }
 
   public boolean defines(String var) throws Exception {
     return params.containsKey(var) || vars.containsKey(var);
+  }
+
+  public String size() {
+    String ret = type.size() + " (i8*";
+    int count_params = oparams.size();
+    for (Var param : oparams) {
+      ret += ",";
+      if (count_params != oparams.size()) {
+        ret += " ";
+      }
+      ret += param.type.size();
+      --count_params;
+    }
+    ret += ")*";
+
+    return ret;
   }
 
   @Override public boolean equals(Object o) {
@@ -61,6 +80,9 @@ public class Func {
       return false;
     }
     if (!oparams.equals(((Func)o).oparams)) {
+      return false;
+    }
+    if (!ovars.equals(((Func)o).ovars)) {
       return false;
     }
     return true;

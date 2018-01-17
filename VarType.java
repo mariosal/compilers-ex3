@@ -35,6 +35,21 @@ public class VarType {
     return true;
   }
 
+  public String size() {
+    String ret;
+    if (name.equals("boolean")) {
+      ret = "i1";
+    } else if (name.equals("void") || name.equals("int")) {
+      ret = "i32";
+    } else {
+      ret = "i8";
+    }
+    if (isObj()) {
+      ret += "*";
+    }
+    return ret;
+  }
+
   public void setLength(int length) throws Exception {
     if (length < 0) {
       throw new Exception("Negative array length");

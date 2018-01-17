@@ -93,6 +93,26 @@ public class Cls {
     return false;
   }
 
+  public Var getVar(String var, Prog prog) {
+    if (vars.containsKey(var)) {
+      return vars.get(var);
+    }
+    if (!parent.isEmpty()) {
+      return prog.classes.get(parent).getVar(var, prog);
+    }
+    return null;
+  }
+
+  public int getOffset(String any, Prog prog) {
+    if (offsets.containsKey(any)) {
+      return offsets.get(any);
+    }
+    if (!parent.isEmpty()) {
+      return prog.classes.get(parent).getOffset(any, prog);
+    }
+    return 0;
+  }
+
   public boolean has(String func, Prog prog) throws Exception {
     if (funcs.containsKey(func)) {
       return true;

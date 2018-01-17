@@ -7,6 +7,8 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
   private PrintWriter out;
   private Prog prog;
 
+  private String expr_list;
+
   private Cls cur_cls;
   private Func cur_func;
   private VarType cur_type;
@@ -194,7 +196,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    * f1 -> ( Statement() )*
    * f2 -> "}"
    */
-  public R visit(Block n, A argu) throws Exception {
+  @Override public R visit(Block n, A argu) throws Exception {
     R _ret = n.f1.accept(this, argu);
     out.printf("%s\n", tabs());
     return _ret;
@@ -236,13 +238,27 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    */
   @Override public R visit(ArrayAssignmentStatement n, A argu) throws Exception {
     R _ret=null;
-    n.f0.accept(this, argu);
-    n.f1.accept(this, argu);
-    n.f2.accept(this, argu);
-    n.f3.accept(this, argu);
-    n.f4.accept(this, argu);
-    n.f5.accept(this, argu);
-    n.f6.accept(this, argu);
+    int tmp = count;
+    count += 8;
+
+    String arr = (String)n.f0.accept(this, argu);
+    String pos = (String)n.f2.accept(this, argu);
+    out.printf("%s%%_%d = load i32, i32 *%s\n", tabs(), tmp, arr);
+    out.printf("%s%%_%d = icmp ult i32 %s, %%_%d\n", tabs(), tmp + 1, pos, tmp);
+    out.printf("%sbr i1 %%_%d, label %%oob%d, label %%oob%d\n\n", tabs(), tmp + 1, tmp + 5, tmp + 6);
+
+    out.printf("oob%d:\n", tmp + 5);
+    out.printf("%s%%_%d = add i32 %s, 1\n", tabs(), tmp + 2, pos);
+    out.printf("%s%%_%d = getelementptr i32, i32* %s, i32 %%_%d\n", tabs(), tmp + 3, arr, tmp + 2);
+    String val = (String)n.f5.accept(this, argu);
+    out.printf("%sstore i32 %s, i32* %%_%d\n", tabs(), val, tmp + 3);
+    out.printf("%sbr label %%oob%d\n\n", tabs(), tmp + 7);
+
+    out.printf("oob%d:\n", tmp + 6);
+    out.printf("%scall void @throw_oob()\n", tabs());
+    out.printf("%sbr label %%oob%d\n\n", tabs(), tmp + 7);
+
+    out.printf("oob%d:\n%s\n", tmp + 7, tabs());
     return _ret;
   }
 
@@ -415,12 +431,27 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    * f3 -> "]"
    */
   @Override public R visit(ArrayLookup n, A argu) throws Exception {
-    R _ret=null;
-    n.f0.accept(this, argu);
-    n.f1.accept(this, argu);
-    n.f2.accept(this, argu);
-    n.f3.accept(this, argu);
-    return _ret;
+    int tmp = count;
+    count += 9;
+
+    String arr = (String)n.f0.accept(this, argu);
+    String pos = (String)n.f2.accept(this, argu);
+    out.printf("%s%%_%d = load i32, i32 *%s\n", tabs(), tmp, arr);
+    out.printf("%s%%_%d = icmp ult i32 %s, %%_%d\n", tabs(), tmp + 1, pos, tmp);
+    out.printf("%sbr i1 %%_%d, label %%oob%d, label %%oob%d\n\n", tabs(), tmp + 1, tmp + 6, tmp + 7);
+
+    out.printf("oob%d:\n", tmp + 6);
+    out.printf("%s%%_%d = add i32 %s, 1\n", tabs(), tmp + 2, pos);
+    out.printf("%s%%_%d = getelementptr i32, i32* %s, i32 %%_%d\n", tabs(), tmp + 3, arr, tmp + 2);
+    out.printf("%s%%_%d = load i32, i32* %%_%d\n", tabs(), tmp + 4, tmp + 3);
+    out.printf("%sbr label %%oob%d\n\n", tabs(), tmp + 8);
+
+    out.printf("oob%d:\n", tmp + 7);
+    out.printf("%scall void @throw_oob()\n", tabs());
+    out.printf("%sbr label %%oob%d\n\n", tabs(), tmp + 8);
+
+    out.printf("oob%d:\n", tmp + 8);
+    return (R)("%_" + (tmp + 4));
   }
 
   /**
@@ -469,10 +500,8 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     int tmp = count;
     ++count;
 
-    String expr_list = (String)n.f4.accept(this, argu);
-    if (expr_list == null) {
-      expr_list = "";
-    }
+    expr_list = "";
+    n.f4.accept(this, argu);
     out.printf("%s%%_%d = call %s %%_%d(i8* %s%s)\n", tabs(), tmp, func.type.size(), tmp - 1, expr, expr_list);
     cur_type = func.type;
     return (R)("%_" + tmp);
@@ -485,11 +514,9 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
   @Override public R visit(ExpressionList n, A argu) throws Exception {
     String lhs = (String)n.f0.accept(this, argu);
     String type = cur_type.size();
-    String rhs = (String)n.f1.accept(this, argu);
-    if (rhs == null) {
-      rhs = "";
-    }
-    return (R)(", " + type + " " + lhs + rhs);
+    expr_list += ", " + type + " " + lhs;
+    n.f1.accept(this, argu);
+    return null;
   }
 
   /**
@@ -498,7 +525,8 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    */
   @Override public R visit(ExpressionTerm n, A argu) throws Exception {
     String expr = (String)n.f1.accept(this, argu);
-    return (R)(", " + cur_type.size() + " " + expr);
+    expr_list += ", " + cur_type.size() + " " + expr;
+    return null;
   }
 
   /**
@@ -590,11 +618,11 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     String size = (String)n.f3.accept(this, argu);
 
     out.printf("%s%%_%d = icmp slt i32 %s, 0\n", tabs(), tmp + 3, size);
-    out.printf("%sbr i1 %%_%d, label %%arr_alloc%d, label %%arr_alloc%d\n%s\n", tabs(), tmp + 3, tmp + 4, tmp + 5, tabs());
+    out.printf("%sbr i1 %%_%d, label %%arr_alloc%d, label %%arr_alloc%d\n\n", tabs(), tmp + 3, tmp + 4, tmp + 5);
 
     out.printf("arr_alloc%d:\n", tmp + 4);
     out.printf("%scall void @throw_oob()\n", tabs());
-    out.printf("%sbr label %%arr_alloc%d\n%s\n", tabs(), tmp + 5, tabs());
+    out.printf("%sbr label %%arr_alloc%d\n\n", tabs(), tmp + 5);
 
     out.printf("arr_alloc%d:\n", tmp + 5);
     out.printf("%s%%_%d = add i32 %s, 1\n", tabs(), tmp, size);

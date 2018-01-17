@@ -24,7 +24,7 @@ public class Main {
         out = new PrintWriter(String.join(".", outArr), "UTF-8");
 
         LlvmIr<String,String> llvm_ir = new LlvmIr<>(out, symbol_visitor.prog);
-        goal.accept(llvm_ir, "goal");
+        goal.accept(llvm_ir, "");
       } catch (ParseException e) {
         System.err.println(e.getMessage());
       } catch (FileNotFoundException e) {

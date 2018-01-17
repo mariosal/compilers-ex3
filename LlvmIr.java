@@ -9,6 +9,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
 
   private Cls cur_cls;
   private Func cur_func;
+  private VarType cur_type;
 
   private int count;
   private int indent;
@@ -304,11 +305,8 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    */
   @Override public R visit(PrintStatement n, A argu) throws Exception {
     R _ret=null;
-    n.f0.accept(this, argu);
-    n.f1.accept(this, argu);
-    n.f2.accept(this, argu);
-    n.f3.accept(this, argu);
-    n.f4.accept(this, argu);
+    String expr = (String)n.f2.accept(this, argu);
+    out.printf("%scall void (i32) @print_int(i32 %s)\n", tabs(), expr);
     return _ret;
   }
 
@@ -436,14 +434,37 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    * f5 -> ")"
    */
   @Override public R visit(MessageSend n, A argu) throws Exception {
-    R _ret=null;
-    n.f0.accept(this, argu);
-    n.f1.accept(this, argu);
-    //n.f2.accept(this, argu);
-    n.f3.accept(this, argu);
-    n.f4.accept(this, argu);
-    n.f5.accept(this, argu);
-    return _ret;
+    String expr = (String)n.f0.accept(this, argu);
+
+    Func func = prog.classes.get(cur_type.name).getFunc(n.f2.f0.toString(), prog);
+    int func_pos = prog.classes.get(cur_type.name).getOffset(n.f2.f0.toString(), prog) / 8;
+    out.printf("%s; %s.%s : %d\n", tabs(), cur_type.name, n.f2.f0.toString(), func_pos);
+
+    out.printf("%s%%_%d = bitcast i8* %s to i8***\n", tabs(), count, expr);
+    ++count;
+
+    out.printf("%s%%_%d = load i8**, i8*** %%_%d\n", tabs(), count, count - 1);
+    ++count;
+
+    out.printf("%s%%_%d = getelementptr i8*, i8** %%_%d, i32 %d\n", tabs(), count, count - 1, func_pos);
+    ++count;
+
+    out.printf("%s%%_%d = load i8*, i8** %%_%d\n", tabs(), count, count - 1);
+    ++count;
+
+    out.printf("%s%%_%d = bitcast i8* %%_%d to %s\n", tabs(), count, count - 1, func.size());
+    ++count;
+
+    int tmp = count;
+    ++count;
+
+    String expr_list = (String)n.f4.accept(this, argu);
+    if (expr_list == null) {
+      expr_list = "";
+    }
+    out.printf("%s%%_%d = call %s %%_%d(i8* %%this%s)\n", tabs(), tmp, func.type.size(), tmp - 1, expr_list);
+    cur_type = func.type;
+    return (R)("%_" + tmp);
   }
 
   /**
@@ -451,17 +472,13 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    * f1 -> ExpressionTail()
    */
   @Override public R visit(ExpressionList n, A argu) throws Exception {
-    R _ret=null;
-    n.f0.accept(this, argu);
-    n.f1.accept(this, argu);
-    return _ret;
-  }
-
-  /**
-   * f0 -> ( ExpressionTerm() )*
-   */
-  @Override public R visit(ExpressionTail n, A argu) throws Exception {
-    return n.f0.accept(this, argu);
+    String lhs = (String)n.f0.accept(this, argu);
+    String type = cur_type.size();
+    String rhs = (String)n.f1.accept(this, argu);
+    if (rhs == null) {
+      rhs = "";
+    }
+    return (R)(", " + type + " " + lhs + rhs);
   }
 
   /**
@@ -469,16 +486,15 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    * f1 -> Expression()
    */
   @Override public R visit(ExpressionTerm n, A argu) throws Exception {
-    R _ret=null;
-    n.f0.accept(this, argu);
-    n.f1.accept(this, argu);
-    return _ret;
+    String expr = (String)n.f1.accept(this, argu);
+    return (R)(", " + cur_type.size() + " " + expr);
   }
 
   /**
    * f0 -> <INTEGER_LITERAL>
    */
   @Override public R visit(IntegerLiteral n, A argu) throws Exception {
+    cur_type = new VarType("int", prog);
     return (R)n.f0.toString();
   }
 
@@ -486,6 +502,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    * f0 -> "true"
    */
   @Override public R visit(TrueLiteral n, A argu) throws Exception {
+    cur_type = new VarType("boolean", prog);
     return (R)"1";
   }
 
@@ -493,6 +510,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    * f0 -> "false"
    */
   @Override public R visit(FalseLiteral n, A argu) throws Exception {
+    cur_type = new VarType("boolean", prog);
     return (R)"0";
   }
 
@@ -505,6 +523,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     String id = n.f0.toString();
     if (cur_func.vars.containsKey(id)) {
       Var var = cur_func.vars.get(id);
+      cur_type = var.type;
       if (argu.equals("lhs")) {
         _ret = (R)("%" + var.name);
       } else {
@@ -514,6 +533,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
       }
     } else if (cur_func.params.containsKey(id)) {
       Var var = cur_func.params.get(id);
+      cur_type = var.type;
       if (argu.equals("lhs")) {
         _ret = (R)("%" + var.name);
       } else {
@@ -523,6 +543,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
       }
     } else if (cur_cls.defines(id, prog)) {
       Var var = cur_cls.getVar(id, prog);
+      cur_type = var.type;
       out.printf("%s%%_%d = getelementptr i8, i8* %%this, i32 %d\n", tabs(), count, cur_cls.getOffset(id, prog) + 8);
       ++count;
       out.printf("%s%%_%d = bitcast i8* %%_%d to %s*\n", tabs(), count, count - 1, var.type.size());
@@ -541,6 +562,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    * f0 -> "this"
    */
   @Override public R visit(ThisExpression n, A argu) throws Exception {
+    cur_type = new VarType(cur_cls.name, prog);
     return (R)"%this";
   }
 
@@ -569,6 +591,7 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     out.printf("%s%%_%d = bitcast i8* %%_%d to i32*\n", tabs(), tmp + 2, tmp + 1);
     out.printf("%sstore i32 %s, i32* %%_%d\n", tabs(), size, tmp + 2);
 
+    cur_type = new VarType("int", prog, true);
     return (R)("%_" + (tmp + 2));
   }
 
@@ -592,6 +615,8 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
     out.printf("%s%%_%d = getelementptr [%d x i8*], [%d x i8*]* @.%s_vtable, i32 0, i32 0\n", tabs(), count, count_funcs, count_funcs, new_cls.name);
     out.printf("%sstore i8** %%_%d, i8*** %%_%d\n", tabs(), count, count - 1);
     ++count;
+
+    cur_type = new VarType(n.f1.f0.toString(), prog);
     return _ret;
   }
 

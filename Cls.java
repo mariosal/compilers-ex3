@@ -103,6 +103,16 @@ public class Cls {
     return null;
   }
 
+  public Func getFunc(String func, Prog prog) {
+    if (funcs.containsKey(func)) {
+      return funcs.get(func);
+    }
+    if (!parent.isEmpty()) {
+      return prog.classes.get(parent).getFunc(func, prog);
+    }
+    return null;
+  }
+
   public int getOffset(String any, Prog prog) {
     if (offsets.containsKey(any)) {
       return offsets.get(any);

@@ -5,14 +5,14 @@ public class VarType {
   public boolean isArray;
   public int length;
 
-  public VarType() throws Exception {
+  public VarType() {
   }
 
-  public VarType(String name, Prog prog) throws Exception {
+  public VarType(String name, Prog prog) {
     this(name, prog, false);
   }
 
-  public VarType(String name, Prog prog, boolean isArray) throws Exception {
+  public VarType(String name, Prog prog, boolean isArray) {
     this.name = name;
     this.isArray = isArray;
 

@@ -103,7 +103,9 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
 
     out.print("\ndefine i32 @main() {\n");
     R _ret=null;
-    n.f14.accept(this, argu);
+    for (Var var : cur_func.ovars) {
+      out.printf("\t%%%s = alloca %s\n%s\n", var.name, var.type.size(), tabs());
+    }
     n.f15.accept(this, argu);
     out.print("\tret i32 0\n}\n");
     return _ret;
@@ -460,11 +462,16 @@ public class LlvmIr<R,A> extends GJDepthFirst<R,A> {
    * f2 -> "length"
    */
   @Override public R visit(ArrayLength n, A argu) throws Exception {
-    R _ret=null;
-    n.f0.accept(this, argu);
-    n.f1.accept(this, argu);
-    n.f2.accept(this, argu);
-    return _ret;
+    int tmp = count;
+    count += 2;
+
+    String arr = (String)n.f0.accept(this, argu);
+
+    out.printf("%s%%_%d = getelementptr i32, i32* %s, i32 0\n", tabs(), tmp, arr);
+    out.printf("%s%%_%d = load i32, i32* %%_%d\n", tabs(), tmp + 1, tmp);
+
+    cur_type = new VarType("int", prog);
+    return (R)("%_" + (tmp + 1));
   }
 
   /**

@@ -1,5 +1,5 @@
 SRCS = Main.java SymbolVisitor.java Prog.java Cls.java Func.java Var.java\
-       VarType.java Offset.java
+       VarType.java Offset.java LlvmIr.java
 
 BIN = Main.class
 

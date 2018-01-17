@@ -161,6 +161,12 @@ public class Cls {
         ret.add(func);
       }
     }
+
+    for (Func func : ofuncs) {
+      if (!ret.contains(func)) {
+        ret.add(func);
+      }
+    }
     return ret;
   }
 

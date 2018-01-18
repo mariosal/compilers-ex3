@@ -1,4 +1,4 @@
-# Compilers - [Exercise 2](http://cgi.di.uoa.gr/~thp06/project.html)
+# Compilers - [Exercise 3](http://cgi.di.uoa.gr/~thp06/project.html)
 
 ## Author
 
